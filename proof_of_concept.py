@@ -26,7 +26,7 @@ def get_description_data():
 def get_tool_timestamps(description):
     lines = description.splitlines()
     timestamps = [l for l in lines if re.match(r"^\d{2}:\d{2}:\d{2}", l)]
-    tools = [t for t in timestamps if "Tool" in t]
+    tools = [t for t in timestamps if "Protocol" in t or "Tool" in t]
     return tools
 
 
@@ -44,7 +44,7 @@ def get_tool_data(description: str):
             description=re.sub(r"^\d{2}:\d{2}:\d{2}", "", t),
         )
         for t in timestamps
-        if "Tool" in t
+        if "Tool" in t or "Protocol" in t or "Ways to" in t
     ]
     return tool_data
 
@@ -52,20 +52,34 @@ def get_tool_data(description: str):
 def episode_rundown(video_data: dict):
     description = video_data["snippet"]["description"]
     tool_data = get_tool_data(description)
-    return [
-        dict(
-            **td,
-            title=video_data["snippet"]["title"],
-            link=f"https://www.youtube.com/watch?v={video_data['snippet']['resourceId']['videoId']}&t={td['timestamp']}",
-        )
-        for td in tool_data
-    ]
+    return dict(
+        title=video_data["snippet"]["title"],
+        tools=[
+            dict(
+                **td,
+                link=f"https://www.youtube.com/watch?v={video_data['snippet']['resourceId']['videoId']}&t={td['timestamp']}",
+            )
+            for td in tool_data
+        ],
+    )
+
+
+def rundown_in_txt():
+    videos = get_playlist_video_data()
+    rundowns = [episode_rundown(v) for v in videos["items"]]
+    with open("rundown.md", "w") as f:
+        for r in rundowns:
+            f.write(f"* ## {r['title']}\n")
+            for t in r["tools"]:
+                f.write(f"\t* {t['description']} : {t['link']}\n")
+    return rundowns
 
 
 if __name__ == "__main__":
+    rundown_in_txt()
     videos = get_playlist_video_data()
     video_data = next((i for i in videos["items"]), None)
     rundown = episode_rundown(video_data)
-    print(rundown[0]["title"])
-    for r in rundown:
+    print(rundown["title"])
+    for r in rundown["tools"]:
         print(f"{r['description']} - {r['link']}")
