@@ -1,0 +1,4 @@
+pydantic==1.9.0
+requests==2.27.1
+
+black==22.3.0
